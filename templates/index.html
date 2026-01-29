@@ -36,9 +36,30 @@
                     </div>
                     <div class="card-body">
                         {% if current_user.is_authenticated %}
-    <form action="/add" method="POST" class="d-flex mb-3">
-        <input type="text" name="task" class="form-control me-2" placeholder="What needs to be done?" required>
-        <button type="submit" class="btn btn-success">Add</button>
+    <form action="/add" method="POST" class="mb-4">
+        
+        <div class="row g-2">
+            <div class="col-md-6">
+                <input type="text" name="task" class="form-control" placeholder="What needs to be done?" required>
+            </div>
+            
+            <div class="col-md-3">
+                <select name="priority" class="form-select">
+                    <option value="Low">Low Priority</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High Priority</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <input type="date" name="deadline" class="form-control">
+            </div>
+            
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary w-100">Add Task</button>
+            </div>
+        </div>
+
     </form>
 {% else %}
     <div class="alert alert-info text-center">
@@ -50,20 +71,37 @@
                             {% for task in tasks %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
     
-    <span class="{% if task.is_completed %} text-decoration-line-through text-muted {% endif %}">
-        {{ task.content }}
-    </span>
+    <div>
+        <span class="fs-5 {% if task.is_completed %} text-decoration-line-through text-muted {% endif %}">
+            {{ task.content }}
+        </span>
+
+        <div class="mt-1">
+            
+            {% if task.priority == 'High' %}
+                <span class="badge bg-danger">High</span>
+            {% elif task.priority == 'Medium' %}
+                <span class="badge bg-warning text-dark">Medium</span>
+            {% else %}
+                <span class="badge bg-success">Low</span>
+            {% endif %}
+
+            {% if task.deadline %}
+                <span class="text-muted small ms-2">
+                    🕒 Due: {{ task.deadline }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
 
     <div>
         <a href="/toggle/{{ task.id }}" class="btn btn-sm btn-outline-success me-2">
             {{ 'Undo' if task.is_completed else 'Done' }}
         </a>
-
         <a href="/delete/{{ task.id }}" class="btn btn-sm btn-danger">X</a>
     </div>
 
-</li>
-                            {% endfor %}
+</li>                     {% endfor %}
                         </ul>
 
                     </div>

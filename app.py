@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from flask import Flask, render_template, request, redirect, flash, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
@@ -9,7 +10,7 @@ app = Flask(__name__)
 # --- 1. CONFIGURATION ---
 app.secret_key = "change_this_to_something_secret"
 
-# Database Config (Render vs Local)
+# Database Config
 db_url = os.environ.get("DATABASE_URL")
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -19,10 +20,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# --- 2. LOGIN MANAGER (The Missing Piece) ---
+# --- 2. LOGIN MANAGER ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # Where to send users if they try to access locked pages
+login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -34,8 +35,6 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    
-    # Relationship: User has many tasks
     tasks = db.relationship('Task', backref='owner', lazy=True)
 
     def set_password(self, password):
@@ -49,7 +48,10 @@ class Task(db.Model):
     content = db.Column(db.String(200), nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
     
-    # Foreign Key: Must link to a User
+    # NEW COLUMNS
+    priority = db.Column(db.String(20), default='Medium')
+    deadline = db.Column(db.Date, nullable=True)
+    
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
@@ -59,13 +61,9 @@ class Task(db.Model):
 
 @app.route("/")
 def home():
-    # If not logged in, show empty list (or a welcome message)
     if not current_user.is_authenticated:
-        # You can pass an empty list, or redirect to login. 
-        # For now, let's show an empty list so they see the navbar options.
         return render_template("index.html", tasks=[])
     
-    # ONLY show logged-in user's tasks
     user_tasks = Task.query.filter_by(user_id=current_user.id).all()
     return render_template("index.html", tasks=user_tasks)
 
@@ -73,8 +71,26 @@ def home():
 @login_required 
 def add_task():
     content = request.form.get("task")
+    priority = request.form.get("priority")
+    deadline_str = request.form.get("deadline")
+    
     if content:
-        new_task = Task(content=content, owner=current_user)
+        # Date Logic
+        deadline_obj = None
+        if deadline_str:
+            try:
+                y, m, d = map(int, deadline_str.split('-'))
+                deadline_obj = date(y, m, d)
+            except ValueError:
+                pass # If date format is bad, just ignore it
+
+        new_task = Task(
+            content=content, 
+            owner=current_user,
+            priority=priority,
+            deadline=deadline_obj
+        )
+        
         db.session.add(new_task)
         db.session.commit()
     return redirect("/")
@@ -142,6 +158,14 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+# --- TEMPORARY DEV TOOL ---
+@app.route('/reset-db')
+def reset_db():
+    # DANGER: This kills all data in the database!
+    db.drop_all()   # Drop old tables
+    db.create_all() # Create new tables with Priority/Deadline
+    return "Database has been RESET. You can now Register and Add Tasks."
 
 if __name__ == "__main__":
     with app.app_context():
