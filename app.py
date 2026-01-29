@@ -159,13 +159,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- TEMPORARY DEV TOOL ---
-@app.route('/reset-db')
-def reset_db():
-    # DANGER: This kills all data in the database!
-    db.drop_all()   # Drop old tables
-    db.create_all() # Create new tables with Priority/Deadline
-    return "Database has been RESET. You can now Register and Add Tasks."
 
 if __name__ == "__main__":
     with app.app_context():
