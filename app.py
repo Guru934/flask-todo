@@ -1,14 +1,16 @@
+import os
 from flask import Flask, render_template, request, redirect
 from flask_sqlalchemy import SQLAlchemy # <--- New Import
 
 app = Flask(__name__)
 
-# 1. Database Configuration
-# This tells Flask to create a file named 'todo.db' in your project folder
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
-# This suppresses a warning message we don't care about
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# NEW BLOCK:
+# This says: "Use the Render Database if available; otherwise, use my local file."
+db_url = os.environ.get("DATABASE_URL")
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1) # Fix for a Render quirk
 
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url or 'sqlite:///todo.db'
 # 2. Create the Database Object
 # This 'db' variable is our connection to the file
 db = SQLAlchemy(app)
